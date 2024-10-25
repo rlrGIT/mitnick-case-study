@@ -1,0 +1,105 @@
+Newsgroups: comp.risks
+X-issue: 16.76
+Date: Tue, 24 Jan 1995 07:09:12 -0500
+From: Steve Bellovin <smb@research.att.com>
+Subject: More on the new CERT advisory 
+
+   [The CERT advisory is the previous item in this issue.  
+   Also, see John Markoff's front-page story in yesterday's 
+   editions of The New York Times, 23 Jan 1995.  PGN]
+
+There's a great deal of confusion about what kind of attack the recent CERT
+advisory is referring to.  Let me try to clear things up.
+
+The specific attack is a sequence number guessing attack, originally
+described by R.T. Morris in Bell Labs Computer Science Technical Report
+#117, February 25, 1985.  I generalized (and publicized) the attack in my
+1989 paper ``Security Problems in the TCP/IP Protocol Suite'', Computer
+Communications Review 19:2, April 1989, pp. 32-48 (URLs below).  Both his
+attack and my generalizations are special cases of a more general attack, IP
+source address spoofing, in which the attacker illegitimately uses a trusted
+machine's IP address in conjunction with some protocol (such as rsh) that
+does address-based authentication.
+
+In order to understand the particular case of sequence number guessing, you
+have to look at the 3-way handshake used in the TCP open sequence.  Suppose
+client machine A wants to talk to rsh server B.  It sends the following
+message:
+
+	A->B: SYN, ISSa
+
+That is, it sends a packet with the SYN (``synchronize sequence
+number'') bit set and an initial sequence number ISSa.
+
+B replies with
+
+	B->A: SYN, ISSb, ACK(ISSa)
+
+In addition to sending its own initial sequence number, it acknowledges A's.
+Note that the actual numeric value ISSa must appear in the message.
+
+A concludes the handshake by sending
+
+	A->B: ACK(ISSb)
+
+The initial sequence numbers are intended to be more or less random.  More
+precisely, RFC 793 specifies that the 32-bit counter be incremented by 1 in
+the low-order position about every 4 microseconds.  Instead,
+Berkeley-derived kernels increment it by 128 every second, and 64 for each
+new connection.  Thus, if you open a connection to a machine, you know to a
+very high degree of confidence what sequence number it will use for its next
+connection.  And therein lies the attack.
+
+The attacker X first opens a real connection to its target B -- say, to the
+mail port or the TCP echo port.  This gives ISSb.  It then impersonates A
+and sends
+
+	A->B: SYN, ISSx
+
+B's response to X's original SYN (so to speak)
+
+	B->A: SYN, ISSb', ACK(ISSx)
+
+goes to the legitimate A, about which more anon.  X never sees that message
+but can still send
+
+	A->B: ACK(ISSb')
+
+using the predicted value for ISSb'.  If the guess is right -- and usually
+it will be -- B's rsh server thinks it has a legitimate connection with A,
+when in fact X is sending the packets.  X can't see the output from this
+session, but it can execute commands as more or less any user -- and in that
+case, the game is over and X has won.
+
+There is a minor difficulty here.  If A sees B's message, it will realize
+that B is acknowledging something it never sent, and will send a RST packet
+in response to tear down the connection.  There are a variety of ways to
+prevent this; the easiest is to wait until the real A is down (possibly as a
+result of enemy action, of course).
+
+There are several possible defenses.  Most obvious is to take advantage of
+topological knowledge: don't let packets purporting to be from a local
+machine arrive on an outside interface.  That works very well if you only
+trust local machines.  If trust is granted to outside machines (say, via
+.rhosts files) and if the attacker can identify the patterns of trust (which
+isn't that difficult), the topological solution won't work.  In that case,
+you have to block all protocols that use TCP and address-based
+authentication.  (UDP is a separate can of worms.)
+
+Best of all, don't use address-based authentication; it's a disaster
+waiting to happen.  The only real solution is cryptographic
+authentication.
+
+Firewalls based on tcpd have a special problem: address-based authentication
+is their business.  If you have a set of rules that grants special
+permission to inside addresses, and you don't use a screening router as
+well, you may be vulnerable.  The question is this: can an attacker do
+damage by just sending commands and not seeing any output? If the answer is
+yes, you are vulnerable.
+
+		--Steve Bellovin
+
+For further information, see the two papers cited above:
+
+ftp://ftp.research.att.com/dist/internet_security/117.ps.Z
+ftp://ftp.research.att.com/dist/internet_security/ipext.ps.Z
