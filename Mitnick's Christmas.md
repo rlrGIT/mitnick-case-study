@@ -54,3 +54,17 @@ Steven Bellovin of Pacific Bell noted that while multiple defenses exist, each h
 Another solution is to prevent external connections using firewalls. However, firewalls that rely on address-based authentication are vulnerable if attackers reverse-engineer firewall rules. Bellovin cautioned that address-based authentication remains exploitable, even if attackers cannot see responses. Bellovin ultimately advised against address-based authentication, recommending cryptographic methods as a more secure alternative.
 
 If address-based authentication must be used, a multi-layered approach with robust logging is a strong option. External connections could be secured with a VPN, requiring authentication before interaction, while internal and external firewalls could monitor and control trusted and public traffic. This limits address-based authentication to internal networks and applies Bellovin’s topological strategy, while cryptographic authentication safeguards against external threats.
+
+
+
+**Sources:**
+
+https://www.giac.org/paper/gsec/1929/kevin-mitnick-hacking/100826
+
+https://www.crime-research.org/library/cybercrime2.html
+
+https://www.cs.columbia.edu/~smb/papers/acsac-ipext.pdf
+
+http://www.takedown.com/coverage/tsu-post.html
+
+https://yarchive.com/risks/ip_spoofing.html
